@@ -42,6 +42,10 @@
       .modal-lg {
         max-width: 980px;
       }
+      .small-muted {
+        font-size: 0.85rem;
+        color: #6c757d;
+      }
     </style>
   </head>
   <body>
@@ -129,7 +133,7 @@
 
     <script>
       const CSV_URL =
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMaRxDl3iLJ6XzucumQdrJesdVP_HKsIM9ntzc2OYI4SsHrfjklc0SEmvZ0dA456i19jkjkovRwcx/pub?gid=709000655&single=true&output=csv";
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKiGqtM_f_HXaKuGVF8zk_smxSwC1IVcR-jpCaRi4GWyOy8C_HqqGYyDJ8Tzq9TNKFnBpcOI_CK4kP/pub?gid=1009399002&single=true&output=csv";
       let parsedData = [];
 
       $(document).ready(function () {
@@ -160,11 +164,15 @@
       }
 
       function normalize(rows) {
-        // Expected headers: No Invoice, Tanggal Invoice, Nilai Invoice, J.Tempo, Cara Pembayaran, Bank, Tanggal Kliring, Jumlah Pembayaran, Sisa Piutang
+        // Expected headers (from your spreadsheet):
+        // A: No Invoice, B: Tanggal Invoice, C: Nilai Invoice, D: J.Tempo,
+        // E: Cara Pembayaran, F: Bank, G: Tanggal Kliring, H: Jumlah Pembayaran,
+        // I: Sisa Piutang, J: Kode Langganan, K: Nama Langganan, L: Salesman
         return rows
           .map((r) => {
             const fmt = (v) =>
               v === undefined || v === null ? "" : String(v).trim();
+
             const num = (v) => {
               // bersihkan karakter yang bukan angka, titik, koma, minus
               let s = String(v || "")
@@ -172,43 +180,46 @@
                 .trim();
               if (s === "") return 0;
 
-              // Jika format menggunakan titik sebagai pemisah ribuan (contoh: 6.960.000),
-              // hapus semua titik. Jika ada koma sebagai desimal (contoh: 1.234,56),
-              // ubah koma jadi titik untuk parseFloat.
-              // Urutan penting: hapus titik ribuan dulu, lalu ubah koma ke titik.
-              s = s.replace(/\./g, ""); // hapus semua titik (ribuan)
-              s = s.replace(/,/g, "."); // ubah koma desimal jadi titik (jika ada)
-
+              // hapus titik ribuan, ubah koma desimal jadi titik
+              s = s.replace(/\./g, "");
+              s = s.replace(/,/g, ".");
               const parsed = parseFloat(s);
               return isNaN(parsed) ? 0 : parsed;
             };
+
             return {
               no_invoice: fmt(
-                r["No Invoice"] ||
-                  r["NoInvoice"] ||
-                  r["no invoice"] ||
-                  r["NoInvoice"]
+                r["No Invoice"] || r["NoInvoice"] || r["no invoice"] || r["A"]
               ),
               tanggal_invoice: fmt(
-                r["Tanggal Invoice"] ||
-                  r["TanggalInvoice"] ||
-                  r["tanggal invoice"]
+                r["Tanggal Invoice"] || r["TanggalInvoice"] || r["B"]
               ),
               nilai_invoice: num(
-                r["Nilai Invoice"] || r["NilaiInvoice"] || r["Nilai"]
+                r["Nilai Invoice"] || r["NilaiInvoice"] || r["C"]
               ),
               jtempo: fmt(
-                r["J.Tempo"] || r["J.Tempo"] || r["J Tempo"] || r["JTempo"]
+                r["J.Tempo"] || r["J Tempo"] || r["JTempo"] || r["D"]
               ),
-              cara_pembayaran: fmt(r["Cara Pembayaran"] || r["CaraPembayaran"]),
-              bank: fmt(r["Bank"]),
-              tanggal_kliring: fmt(r["Tanggal Kliring"] || r["TanggalKliring"]),
+              cara_pembayaran: fmt(
+                r["Cara Pembayaran"] || r["CaraPembayaran"] || r["E"]
+              ),
+              bank: fmt(r["Bank"] || r["F"]),
+              tanggal_kliring: fmt(
+                r["Tanggal Kliring"] || r["TanggalKliring"] || r["G"]
+              ),
               jumlah_pembayaran: num(
-                r["Jumlah Pembayaran"] || r["JumlahPembayaran"] || r["Jumlah"]
+                r["Jumlah Pembayaran"] || r["JumlahPembayaran"] || r["H"]
               ),
               sisa_piutang: num(
-                r["Sisa Piutang"] || r["SisaPiutang"] || r["Sisa"]
+                r["Sisa Piutang"] || r["SisaPiutang"] || r["I"]
               ),
+              kode_langganan: fmt(
+                r["Kode Langganan"] || r["KodeLangganan"] || r["J"]
+              ),
+              nama_langganan: fmt(
+                r["Nama Langganan"] || r["NamaLangganan"] || r["K"]
+              ),
+              salesman: fmt(r["Salesman"] || r["Sales Man"] || r["L"]),
             };
           })
           .filter(
@@ -345,6 +356,20 @@
         <div class="col-md-4"><div class="card"><div class="card-header">Sisa Piutang</div><div class="card-body text-end text-danger fw-bold">${formatCurrency(
           row.sisa_piutang
         )}</div></div></div>
+      </div>
+
+      <hr/>
+
+      <div class="row g-2 mt-2">
+        <div class="col-md-4"><div class="card"><div class="card-header">Kode Langganan</div><div class="card-body">${
+          row.kode_langganan || "-"
+        }</div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-header">Nama Langganan</div><div class="card-body">${
+          row.nama_langganan || "-"
+        }</div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-header">Salesman</div><div class="card-body">${
+          row.salesman || "-"
+        }</div></div></div>
       </div>
     `;
         $("#modalBodyContent").html(html);
