@@ -96,6 +96,7 @@
               <thead class="table-light text-center">
                 <tr>
                   <th>No Invoice</th>
+                  <th>Nama Langganan</th>
                   <th>Tanggal Invoice</th>
                   <th>Nilai Invoice</th>
                   <th>J.Tempo</th>
@@ -174,15 +175,64 @@
               v === undefined || v === null ? "" : String(v).trim();
 
             const num = (v) => {
-              // bersihkan karakter yang bukan angka, titik, koma, minus
-              let s = String(v || "")
-                .replace(/[^\d\-\.,]/g, "")
-                .trim();
+              let s = String(v || "").trim();
               if (s === "") return 0;
 
-              // hapus titik ribuan, ubah koma desimal jadi titik
-              s = s.replace(/\./g, "");
-              s = s.replace(/,/g, ".");
+              // keep only digits, dot, comma, minus
+              s = s.replace(/[^0-9\.,\-]/g, "");
+
+              // Count separators
+              const seps = (s.match(/[.,]/g) || []).length;
+
+              // If more than one separator (e.g. "6,960,000" or "6.960.000"), remove all separators (they are thousand separators)
+              if (seps > 1) {
+                s = s.replace(/[.,]/g, "");
+                const parsed = parseFloat(s);
+                return isNaN(parsed) ? 0 : parsed;
+              }
+
+              // If contains both '.' and ','
+              if (s.includes(".") && s.includes(",")) {
+                // assume last separator is decimal
+                if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+                  // comma as decimal, dots are thousands
+                  s = s.replace(/\./g, "").replace(/,/g, ".");
+                } else {
+                  // dot as decimal, commas are thousands
+                  s = s.replace(/,/g, "");
+                }
+                const parsed = parseFloat(s);
+                return isNaN(parsed) ? 0 : parsed;
+              }
+
+              // Only comma present
+              if (s.includes(",") && !s.includes(".")) {
+                const parts = s.split(",");
+                // if part after comma length is 3 -> likely thousand separator -> remove
+                if (parts[1] && parts[1].length === 3) {
+                  s = s.replace(/,/g, "");
+                } else {
+                  // treat comma as decimal
+                  s = s.replace(/,/g, ".");
+                }
+                const parsed = parseFloat(s);
+                return isNaN(parsed) ? 0 : parsed;
+              }
+
+              // Only dot present
+              if (s.includes(".") && !s.includes(",")) {
+                const parts = s.split(".");
+                // if part after dot length is 3 -> likely thousand separator -> remove
+                if (parts[1] && parts[1].length === 3) {
+                  s = s.replace(/\./g, "");
+                } else {
+                  // treat dot as decimal (keep)
+                }
+                const parsed = parseFloat(s);
+                return isNaN(parsed) ? 0 : parsed;
+              }
+
+              // no separators, just parse
               const parsed = parseFloat(s);
               return isNaN(parsed) ? 0 : parsed;
             };
@@ -190,6 +240,9 @@
             return {
               no_invoice: fmt(
                 r["No Invoice"] || r["NoInvoice"] || r["no invoice"] || r["A"]
+              ),
+              nama_langganan: fmt(
+                r["Nama Langganan"] || r["NamaLangganan"] || r["K"]
               ),
               tanggal_invoice: fmt(
                 r["Tanggal Invoice"] || r["TanggalInvoice"] || r["B"]
@@ -215,9 +268,6 @@
               ),
               kode_langganan: fmt(
                 r["Kode Langganan"] || r["KodeLangganan"] || r["J"]
-              ),
-              nama_langganan: fmt(
-                r["Nama Langganan"] || r["NamaLangganan"] || r["K"]
               ),
               salesman: fmt(r["Salesman"] || r["Sales Man"] || r["L"]),
             };
@@ -276,6 +326,7 @@
               .addClass("nowrap")
               .text(row.no_invoice || "-")
           );
+          tr.append($("<td>").text(row.nama_langganan || "-"));
           tr.append($("<td>").text(row.tanggal_invoice || "-"));
           tr.append(
             $("<td>")
@@ -311,10 +362,10 @@
           scrollX: true,
           pageLength: 10,
           lengthMenu: [5, 10, 25, 50, 100],
-          order: [[1, "desc"]],
+          order: [[2, "desc"]], // sort by Tanggal Invoice (kolom index 2)
           columnDefs: [
-            { targets: [2, 7, 8], className: "text-end" },
-            { targets: [0, 1, 3, 4, 5, 6, 9], className: "text-center" },
+            { targets: [3, 8, 9], className: "text-end" }, // currency columns
+            { targets: [0, 1, 2, 4, 5, 6, 7, 10], className: "text-center" }, // others center
           ],
         });
       }
